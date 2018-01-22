@@ -1,4 +1,4 @@
-FROM alpine:3.7
+FROM alpine:3.7 AS build
 
 LABEL maintainer="thinca <thinca+vim@gmail.com>"
 
@@ -29,12 +29,14 @@ RUN apk add --no-cache \
         ${VIM_ENABLE_PYTHON3:+python3-dev} \
         ${VIM_ENABLE_RUBY:+ruby ruby-dev} \
         ${VIM_ENABLE_LUA:+lua${LUA_VERSION}-dev luajit-dev} \
-        ${VIM_ENABLE_TCL:+tcl-dev} \
- && git -c advice.detachedHead=false \
+        ${VIM_ENABLE_TCL:+tcl-dev}
+RUN git -c advice.detachedHead=false \
         clone --quiet --depth 1 --branch "${VIM_VERSION}" \
-        https://github.com/vim/vim.git /usr/src/vim \
- && cd /usr/src/vim \
- && ./configure \
+        https://github.com/vim/vim.git /usr/src/vim
+
+WORKDIR /usr/src/vim
+
+RUN ./configure \
         --with-features=huge \
         ${VIM_ENABLE_GUI:+--enable-gui=gtk3} \
         ${VIM_ENABLE_PERL:+--enable-perlinterp} \
@@ -43,21 +45,12 @@ RUN apk add --no-cache \
         ${VIM_ENABLE_RUBY:+--enable-rubyinterp} \
         ${VIM_ENABLE_LUA:+--enable-luainterp --with-luajit} \
         ${VIM_ENABLE_TCL:+--enable-tclinterp} \
-        --enable-fail-if-missing \
- && make \
- && make install \
- && cd /root \
- && rm -fr /usr/src/vim \
- && apk del --purge \
-        git \
-        gcc \
-        libc-dev \
-        make \
-        gettext \
-        libxmu-dev \
-        ${VIM_ENABLE_RUBY:+ruby} \
+        --enable-fail-if-missing
+RUN make
+RUN make install
+
 # test
- && vim -es \
+RUN vim -es \
         ${VIM_ENABLE_PERL:+-c 'verbose perl print("Perl $^V")'} \
         ${VIM_ENABLE_PYTHON:+-c 'verbose python import platform;print("Python v" + platform.python_version())'} \
         ${VIM_ENABLE_PYTHON3:+-c 'verbose python3 import platform;print("Python3 v" + platform.python_version())'} \
@@ -67,6 +60,10 @@ RUN apk add --no-cache \
         -c q
 
 
+FROM busybox
+
 WORKDIR /root
+
+COPY --from=build /usr/local /usr/local
 
 ENTRYPOINT ["/usr/local/bin/vim"]
