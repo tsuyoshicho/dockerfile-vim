@@ -77,6 +77,6 @@ RUN apk add --no-cache --virtual .build \
 
 COPY vimrc /usr/local/share/vim/vimrc
 
-WORKDIR /root
+WORKDIR root
 
 ENTRYPOINT ["/usr/local/bin/vim"]
